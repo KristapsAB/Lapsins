@@ -1,95 +1,105 @@
 $(document).ready(function() {
-    // Function to load and display tasks
-    function loadTasks() {
+    // Function to fetch and display tasks
+    function fetchAndDisplayTasks() {
         $.ajax({
-            url: 'api.php',
-            method: 'GET',
-            dataType: 'json',
-            success: function(tasks) {
-                // Ensure tasks is an array
-                if (Array.isArray(tasks)) {
-                    var taskTable = $('#task-table tbody');
-                    taskTable.empty(); // Clear existing rows
-            
-                    tasks.forEach(function(task) {
-                        var row = $('<tr>');
-                        row.append($('<td>').text(task.id));
-                        row.append($('<td>').text(task.title));
-                        row.append($('<td>').text(task.description));
-                        row.append($('<td>').text(task.due_date));
-                        row.append($('<td>').text(task.status));
-                        row.append($('<td>').html('<button class="edit-button" data-id="' + task.id + '">Edit</button>'));
-                        row.append($('<td>').html('<button class="delete-button" data-id="' + task.id + '">Delete</button>'));
-                        taskTable.append(row);
-                    });
-                } else {
-                    console.error('Response is not an array:', tasks);
-                }
+            type: 'GET',
+            url: 'get_tasks.php', // Replace with your server-side script URL
+            success: function(response) {
+                $('#task-list').html(response);
+                attachDeleteHandlers(); // Attach click handlers to delete buttons
+                attachStatusCheckboxHandlers(); // Attach click handlers to status checkboxes
+                attachEditHandlers(); // Attach click handlers to edit buttons
             },
-            error: function(xhr, status, error) {
-                console.error('Error fetching tasks:', error);
+            error: function() {
+                // Handle errors if any
+                alert('An error occurred while fetching tasks.');
             }
         });
     }
 
-    // Load and display tasks when the page loads
-    loadTasks();
+    // Function to attach click handlers to delete buttons
+    function attachDeleteHandlers() {
+        $('.delete-button').click(function(e) {
+            e.preventDefault();
+            
+            var taskId = $(this).data('task-id');
+            
+            $.ajax({
+                type: 'POST',
+                url: 'delete_task.php', // Replace with your server-side delete script URL
+                data: { id: taskId },
+                success: function(response) {
+                    alert(response);
+                    fetchAndDisplayTasks();
+                },
+                error: function() {
+                    alert('An error occurred while deleting the task.');
+                }
+            });
+        });
+    }
 
-    // Handle form submission (adding a task)
-    $('#task-form').on('submit', function(event) {
-        event.preventDefault();
+    // Function to attach click handlers to status checkboxes
+    function attachStatusCheckboxHandlers() {
+        $('.status-checkbox').change(function() {
+            var taskId = $(this).data('task-id');
+            var newStatus = this.checked ? 'Completed' : 'Not Completed';
+            
+            $.ajax({
+                type: 'POST',
+                url: 'update_status.php', // Replace with your server-side update script URL
+                data: { id: taskId, status: newStatus },
+                success: function(response) {
+                    alert(response);
+                    fetchAndDisplayTasks();
+                },
+                error: function() {
+                    alert('An error occurred while updating the status.');
+                }
+            });
+        });
+    }
+
+    // Function to attach click handlers to edit buttons
+    function attachEditHandlers() {
+        $('.edit-button').click(function(e) {
+            e.preventDefault();
+            
+            var taskId = $(this).data('task-id');
+            
+            // Open a modal for editing task details
+            openEditModal(taskId);
+        });
+    }
+
+    // Function to open the edit modal
+    function openEditModal(taskId) {
+        // You can implement your modal or editing form here
+        // For demonstration purposes, we'll show a simple JavaScript alert.
+        alert('Edit task with ID: ' + taskId);
+    }
+
+    // Handle form submission
+    $('#task-form').submit(function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serialize();
 
         $.ajax({
-            url: 'insert.php',
-            method: 'POST',
-            data: {
-                title: $('#title').val(),
-                description: $('#description').val(),
-                due_date: $('#due_date').val(),
-                status: $('#status').val()
-            },
+            type: 'POST',
+            url: 'add_task.php', // Replace with your server-side script URL
+            data: formData,
             success: function(response) {
-                if (response.success) {
-                    alert('Task successfully added!');
-                    loadTasks();
-                } else {
-                    alert('Error adding task: ' + response.message);
-                }
+                alert(response);
+                $('#task-form')[0].reset();
+                fetchAndDisplayTasks();
             },
-            error: function(xhr, status, error) {
-                console.error('Error adding task:', error);
+            error: function() {
+                alert('An error occurred while adding the task.');
             }
         });
     });
 
-    $('#task-table').on('click', '.edit-button', function() {
-        var taskId = $(this).data('id');
-        // Rest of your edit button click handler code...
-    });
-
-    $('#task-table').on('click', '.delete-button', function() {
-        var taskId = $(this).data('id');
-        console.log(taskId);
-        
-        if (confirm('Are you sure you want to delete this task?')) {
-            $.ajax({
-                url: 'delete.php',
-                method: 'POST',
-                data: {
-                    id: taskId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert('Task deleted successfully!');
-                        loadTasks();
-                    } else {
-                        alert('Error deleting task: ' + response.message);
-                    }
-                },                
-                error: function(xhr, status, error) {
-                    console.error('Error deleting task:', error);
-                }
-            });
-        }
-    });
+    // Initial fetch and display of tasks
+    fetchAndDisplayTasks();
 });
